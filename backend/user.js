@@ -76,12 +76,12 @@ module.exports = class User {
     }
 
     // 新增如果备注是空则默认取pt_pin作为备注
-    if (this.jdwsck && this.remark === null || this.remark === '') {
+    if (this.jdwsck && this.remark == null || this.remark == '') {
       this.remark = this.pin;
     }
 
     // 新增如果nickName是空默认取pt_pin作为备注
-    if (this.jdwsck && this.nickName === null || this.nickName === '') {
+    if (this.jdwsck && this.nickName == null || this.nickName == '') {
       this.nickName = this.pin;
     }
 /////////////////////////////////////////////////
@@ -172,7 +172,7 @@ module.exports = class User {
     });
     const data = response.body;
     const headers = response.headers;
-    if (data.errcode === 0) {
+    if (data.errcode == 0) {
       const pt_key = headers['set-cookie'][1];
       this.pt_key = pt_key.substring(pt_key.indexOf('=') + 1, pt_key.indexOf(';'));
       const pt_pin = headers['set-cookie'][2];
@@ -195,12 +195,12 @@ module.exports = class User {
     await this.#getNickname();
     const envs = await getEnvs();
     const poolInfo = await User.getPoolInfo();
-    const env = await envs.find((item) => item.value.match(/pt_pin=(.*?);/)[1] === this.pt_pin);
+    const env = await envs.find((item) => item.value.match(/pt_pin=(.*?);/)[1] == this.pt_pin);
     if (!env) {
       // 新用户
       if (!poolInfo.allowAdd) {
         throw new UserError('管理员已关闭注册，去其他地方看看吧', 210, 200);
-      } else if (poolInfo.marginCount === 0) {
+      } else if (poolInfo.marginCount == 0) {
         throw new UserError('本站已到达注册上限，你来晚啦', 211, 200);
       } else {
         const remarks = `remark=${this.nickName};`;
@@ -208,14 +208,15 @@ module.exports = class User {
         if (body.code !== 200) {
           throw new UserError(body.message || '添加账户错误，请重试', 220, body.code || 200);
         }
-        this.eid = body.data[0]._id;
+        this.eid = body.data[0].id;
         this.timestamp = body.data[0].timestamp;
         message = `注册成功，${this.nickName}`;
         this.#sendNotify('Ninja 运行通知', `用户 ${this.nickName}(${decodeURIComponent(this.pt_pin)}) 已上线`);
       }
     } else {
-      this.eid = env._id;
-      const body = await updateEnv(this.cookie, this.eid);
+        console.log(env);
+      this.eid = env.id == undefined?env.id:env.id;
+      const body = await updateEnv(this.cookie, this.eid,env.remarks);
       if (body.code !== 200) {
         throw new UserError(body.message || '更新账户错误，请重试', 221, body.code || 200);
       }
@@ -233,7 +234,8 @@ module.exports = class User {
 
   async getUserInfoByEid() {
     const envs = await getEnvs();
-    const env = await envs.find((item) => item._id === this.eid);
+    const env = await envs.find((item) => item.id == this.eid);
+    console.log(this.eid,envs);
     if (!env) {
       throw new UserError('没有找到这个账户，重新登录试试看哦', 230, 200);
     }
@@ -253,12 +255,13 @@ module.exports = class User {
   }
 
   async updateRemark() {
-    if (!this.eid || !this.remark || this.remark.replace(/(^\s*)|(\s*$)/g, '') === '') {
+    if (!this.eid || !this.remark || this.remark.replace(/(^\s*)|(\s*$)/g, '') == '') {
       throw new UserError('eid参数错误', 240, 200);
     }
 
     const envs = await getEnvs();
-    const env = await envs.find((item) => item._id === this.eid);
+    console.log(this.eid);
+    const env = await envs.find((item) => item.id == this.eid);
     if (!env) {
       throw new UserError('没有找到这个ck账户，重新登录试试看哦', 230, 200);
     }
@@ -295,12 +298,12 @@ module.exports = class User {
     await this.#getWSCKCheck();
     const envs = await getWSCKEnvs();// 1
     const poolInfo = await User.getPoolInfo();
-    const env = await envs.find((item) => item.value.match(/pin=(.*?);/)[1] === this.pin);
+    const env = await envs.find((item) => item.value.match(/pin=(.*?);/)[1] == this.pin);
     if (!env) {
       // 新用户
       if (!poolInfo.allowWSCKAdd) {
         throw new UserError('管理员已关闭注册，去其他地方看看吧', 210, 200);
-      } else if (poolInfo.marginWSCKCount === 0) {
+      } else if (poolInfo.marginWSCKCount == 0) {
         throw new UserError('本站已到达注册上限，你来晚啦', 211, 200);
       } else {
         const remarks = `remark=${this.nickName};`;
@@ -308,13 +311,13 @@ module.exports = class User {
         if (body.code !== 200) {
           throw new UserError(body.message || '添加账户错误，请重试', 220, body.code || 200);
         }
-        this.wseid = body.data[0]._id;
+        this.wseid = body.data[0].id;
         this.timestamp = body.data[0].timestamp;
         message = `录入成功，${this.pin}`;
         this.#sendNotify('Ninja 运行通知', `用户 ${this.pin} WSCK 添加成功`);
       }
     } else {
-      this.wseid = env._id;
+      this.wseid = env.id;
       const body = await updateWSCKEnv(this.jdwsck, this.wseid);
       if (body.code !== 200) {
         throw new UserError(body.message || '更新账户错误，请重试', 221, body.code || 200);
@@ -337,7 +340,7 @@ module.exports = class User {
   //不查nickname了，用remark代替
   async getWSCKUserInfoByEid() {
     const envs = await getWSCKEnvs();
-    const env = await envs.find((item) => item._id === this.wseid);
+    const env = await envs.find((item) => item.id == this.wseid);
     if (!env) {
       throw new UserError('没有找到这个账户，重新登录试试看哦', 230, 200);
     }
@@ -357,12 +360,12 @@ module.exports = class User {
   }
 
   async updateWSCKRemark() {
-    if (!this.wseid || !this.remark || this.remark.replace(/(^\s*)|(\s*$)/g, '') === '') {
+    if (!this.wseid || !this.remark || this.remark.replace(/(^\s*)|(\s*$)/g, '') == '') {
       throw new UserError('wseid参数错误', 240, 200);
     }
 
     const envs = await getWSCKEnvs();
-    const env = await envs.find((item) => item._id === this.wseid);
+    const env = await envs.find((item) => item.id == this.wseid);
     if (!env) {
       throw new UserError('没有找到这个wskey账户，重新登录试试看哦', 230, 200);
     }
